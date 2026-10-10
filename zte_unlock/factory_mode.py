@@ -17,10 +17,10 @@ from __future__ import annotations
 import argparse
 import base64
 import http.client
-import re
 import socket
 import sys
 import time
+from html.parser import HTMLParser
 from urllib import parse
 
 import psutil
@@ -438,29 +438,63 @@ def _show_info(args) -> int:
     print(f"  ONT {args.ip} responded {resp.status}")
     print()
 
-    # The status page layout varies by firmware; pull any labelled field whose
-    # value looks like a version or model string.
-    text = re.sub(r"<[^>]+>", " ", body)
+    fields = _parse_status_fields(body)
+    for label in ("Device Type", "Hardware Version", "Software Version", "Boot Version"):
+        value = fields.get(label.lower())
+        if value:
+            print(f"  {label}: {value}")
 
-    fields = {
-        "Device Type": r"Device\s*Type\s+V?([0-9A-Za-z][0-9A-Za-z.\-]*)",
-        "Hardware Version": r"Hardware\s*Version\s+V?([0-9][0-9A-Za-z.]*)",
-        "Software Version": r"Software\s*Version\s+V?([0-9][0-9A-Za-z.]*)",
-        "Boot Version": r"Boot\s*Version\s+V?([0-9][0-9A-Za-z.]*)",
-    }
-    found = False
-    for label, pattern in fields.items():
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            print(f"  {label}: {match.group(1).strip()}")
-            found = True
-
-    if not found:
-        print("  (no version fields found -- the status page layout may differ)")
+    if not fields:
+        print("  (no labelled fields found -- the status page layout may differ)")
 
     print()
     print("  Read-only: nothing was changed on the ONT.")
     return 0
+
+
+class _StatusTableReader(HTMLParser):
+    """Collect label/value pairs from two-cell table rows.
+
+    The ONT status page is a table, so it is read as one. Matching the text
+    with a regex instead depends on how the tags happen to fall, which picks up
+    unrelated text on a page that mentions a version anywhere.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fields: dict[str, str] = {}
+        self._row: list[str] = []
+        self._cell = False
+        self._buffer: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag == "tr":
+            self._row = []
+        elif tag in ("td", "th"):
+            self._cell, self._buffer = True, []
+
+    def handle_data(self, data: str) -> None:
+        if self._cell:
+            self._buffer.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("td", "th") and self._cell:
+            self._row.append("".join(self._buffer).strip())
+            self._cell = False
+        elif tag == "tr" and len(self._row) == 2:
+            self.fields[self._row[0].lower()] = self._row[1]
+
+
+def _parse_status_fields(body: str) -> dict[str, str]:
+    """Return lower-cased label -> value from the ONT status page."""
+    reader = _StatusTableReader()
+    try:
+        reader.feed(body)
+        reader.close()
+    except Exception:
+        # A malformed page should not stop us reporting whatever did parse.
+        pass
+    return reader.fields
 
 
 def _check_mac(ip: str) -> int:
