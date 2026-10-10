@@ -77,7 +77,7 @@ bridge-mode firmware downgrade were worked out independently. Upstream tools:
 ## About the vendored firmware
 
 `firmware/ZXHN_F670L_V9.0.11P1N40.bin` is ZTE's proprietary firmware image,
-redistributed **unmodified**. It is not covered by this repo's MIT license; it remains
+redistributed **unmodified**. It is not covered by this repo's WTFPL license; it remains
 the property of ZTE.
 
 - **Version:** `V9.0.11P1N40` (`ZXHN F670L UNI V9.0.11P1N40`, built 2022-05-25)
