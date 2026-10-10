@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import base64
 import http.client
+import re
 import socket
 import sys
 import time
@@ -139,15 +140,16 @@ class _KeepAlive:
                 return resp.status, resp.read()
             except (http.client.RemoteDisconnected, http.client.BadStatusLine):
                 # The ONT hung up. That is a valid outcome for one specific
-                # request; the caller decides. Reconnect once so the session
-                # stays usable, then let it propagate.
+                # request, so it is NOT retried here -- the caller decides,
+                # via allow_eof, whether a hang-up means success.
                 self.close()
                 raise
             except (OSError, http.client.HTTPException):
+                # Everything else is worth one more try on a fresh connection.
                 self.close()
                 if attempt == 2:
                     raise
-        raise FactoryError("unreachable")
+        # Unreachable: the loop returns or raises on both attempts.
 
     def close(self) -> None:
         if self._conn is not None:
@@ -373,7 +375,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--check-mac",
         action="store_true",
-        help=f"verify a local interface uses {_MAGIC_MAC} (needed for --new firmware)",
+        help="report whether the interface routing to the ONT uses the magic MAC "
+             "(the --new flag belongs to the upstream tool, not this one)",
     )
     parser.add_argument(
         "--info",
@@ -431,70 +434,142 @@ def _show_info(args) -> int:
             body = resp.read().decode(errors="replace")
         finally:
             conn.close()
-    except OSError as exc:
-        print(f"error: cannot reach {url}: {exc}", file=sys.stderr)
+    except (OSError, http.client.HTTPException) as exc:
+        # HTTPException is not an OSError, so a non-HTTP reply would otherwise
+        # escape as an unhandled traceback from a read-only diagnostic.
+        print(f"error: cannot read {url}: {exc}", file=sys.stderr)
         return 1
 
     print(f"  ONT {args.ip} responded {resp.status}")
     print()
 
     fields = _parse_status_fields(body)
+    shown = 0
     for label in ("Device Type", "Hardware Version", "Software Version", "Boot Version"):
         value = fields.get(label.lower())
         if value:
             print(f"  {label}: {value}")
+            shown += 1
 
-    if not fields:
-        print("  (no labelled fields found -- the status page layout may differ)")
+    if not shown:
+        # fields may be non-empty but contain none of the labels above, which
+        # is just as unhelpful as finding nothing at all.
+        print("  (no version fields found -- the status page layout may differ)")
 
     print()
     print("  Read-only: nothing was changed on the ONT.")
     return 0
 
 
-class _StatusTableReader(HTMLParser):
-    """Collect label/value pairs from two-cell table rows.
+_FIELD_PATTERNS = {
+    "device type": r"Device\s*Type\s+([0-9A-Za-z][0-9A-Za-z.\-]*)",
+    "hardware version": r"Hardware\s*Version\s+([0-9A-Za-z][0-9A-Za-z.]*)",
+    "software version": r"Software\s*Version\s+([0-9A-Za-z][0-9A-Za-z.]*)",
+    "boot version": r"Boot\s*Version\s+([0-9A-Za-z][0-9A-Za-z.]*)",
+}
 
-    The ONT status page is a table, so it is read as one. Matching the text
-    with a regex instead depends on how the tags happen to fall, which picks up
-    unrelated text on a page that mentions a version anywhere.
+
+class _StatusTableReader(HTMLParser):
+    """Collect label/value pairs from the ONT status page.
+
+    Reads the page structurally -- the real layout is a table of label/value
+    pairs -- but stays lenient about the exact shape, because embedded web UIs
+    routinely emit unclosed tags, three-column rows, or div/span layouts that a
+    strict two-cell parser would reject outright.
+
+    Cells are also flushed on a new cell or row start, so unclosed markup still
+    yields content. A regex over stripped tags was the previous approach; it
+    could not tell a table cell from a sentence that merely mentions a version.
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(convert_charrefs=True)
         self.fields: dict[str, str] = {}
-        self._row: list[str] = []
-        self._cell = False
+        self._cells: list[str] = []
         self._buffer: list[str] = []
+        self._in_cell = False
+
+    def _flush_cell(self) -> None:
+        if self._in_cell:
+            self._cells.append("".join(self._buffer).strip())
+            self._buffer = []
+            self._in_cell = False
+
+    def _flush_row(self) -> None:
+        self._flush_cell()
+        # Take the first two cells: a three-column row still labels the value.
+        if len(self._cells) >= 2:
+            label = _normalise_label(self._cells[0])
+            if label:
+                self.fields[label] = self._cells[1]
+        self._cells = []
 
     def handle_starttag(self, tag: str, attrs) -> None:
         if tag == "tr":
-            self._row = []
+            self._flush_row()
         elif tag in ("td", "th"):
-            self._cell, self._buffer = True, []
+            self._flush_cell()
+            self._in_cell = True
+
+    def handle_startendtag(self, tag: str, attrs) -> None:
+        # <br/> and friends: nothing to collect, but they end a run of text.
+        self._flush_cell()
 
     def handle_data(self, data: str) -> None:
-        if self._cell:
+        if self._in_cell:
             self._buffer.append(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ("td", "th") and self._cell:
-            self._row.append("".join(self._buffer).strip())
-            self._cell = False
-        elif tag == "tr" and len(self._row) == 2:
-            self.fields[self._row[0].lower()] = self._row[1]
+        if tag in ("td", "th"):
+            self._flush_cell()
+        elif tag == "tr":
+            self._flush_row()
+
+    def close(self) -> None:
+        super().close()
+        self._flush_row()
+
+
+def _normalise_label(label: str) -> str:
+    """Lower-case a label and collapse the whitespace markup leaves behind.
+
+    Firmware pages write "Software&nbsp;Version" and "Software Version" for
+    what is the same field.
+    """
+    return " ".join(label.replace("\xa0", " ").split()).lower()
 
 
 def _parse_status_fields(body: str) -> dict[str, str]:
-    """Return lower-cased label -> value from the ONT status page."""
+    """Return normalised label -> value from the ONT status page.
+
+    Prefers the structural read. Falls back to scanning the flattened text when
+    that finds nothing, so a non-table layout still reports something rather
+    than going quiet. The fallback is worse -- it can match prose that merely
+    mentions a version -- so it only runs when the table parse came up empty.
+    """
     reader = _StatusTableReader()
     try:
         reader.feed(body)
         reader.close()
     except Exception:
-        # A malformed page should not stop us reporting whatever did parse.
+        # html.parser is tolerant, but a diagnostic must never crash.
         pass
-    return reader.fields
+
+    if reader.fields:
+        return reader.fields
+    return _fields_from_text(body)
+
+
+def _fields_from_text(body: str) -> dict[str, str]:
+    """Last-resort scan of the page text, for non-table layouts."""
+    text = re.sub(r"<[^>]+>", " ", body)
+    fields: dict[str, str] = {}
+    for label, pattern in _FIELD_PATTERNS.items():
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            # Keys use the same normalised form as the structural reader.
+            fields[_normalise_label(label)] = match.group(1).strip()
+    return fields
 
 
 def _check_mac(ip: str) -> int:

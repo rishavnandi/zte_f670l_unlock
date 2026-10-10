@@ -128,8 +128,8 @@ pip install -e .
 python3 -m zte_unlock -i 192.168.1.1
 ```
 
-Two dependencies: `cryptography` for AES, and `psutil` for the optional MAC
-check.
+Two dependencies, both required: `cryptography` for AES, and `psutil` for the
+MAC check.
 
 It prints the telnet username and password when it succeeds.
 

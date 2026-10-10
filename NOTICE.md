@@ -50,7 +50,7 @@ Other implementations of the same approach, for reference:
 
 Upstream projects are stable and public, but a procedure that depends on one
 repository remaining reachable is fragile. This implementation means the guide in
-[../GUIDE.md](../GUIDE.md) keeps working even if a tool disappears.
+[GUIDE.md](GUIDE.md) keeps working even if a tool disappears.
 
 ## Verification
 
@@ -62,9 +62,10 @@ across all three key sizes with randomised keys and lengths, and pinned to the
 FIPS-197 known-answer vector in the tests.
 
 An earlier version of this repository hand-rolled the cipher instead of taking a
-dependency. It was replaced after review: the primitive is not the interesting
-part, and the hand-rolled key schedule had a bug that AES-128 and AES-256 passed
-straight over while only AES-192 — the size the protocol actually uses — failed.
+dependency, and replaced it during development once it became clear the primitive
+is not the interesting part. No committed version of this repository shipped a
+broken cipher: the AES-192 key schedule bug was found and fixed before the code
+was first committed.
 
 Protocol compatibility was verified by **differential testing against the
 compiled upstream Go binary**: both clients were pointed at the same mock ONT and
@@ -80,7 +81,7 @@ ONT tracks factory-mode state per connection, and urllib's default
 `tests/test_compat.py` cover each of these.
 
 **This is not validated against real ONT hardware.** Everything above is against
-a mock and a reference binary. See the caveats in [../GUIDE.md](../GUIDE.md).
+a mock and a reference binary. See the caveats in [GUIDE.md](GUIDE.md).
 
 ## Trademarks
 

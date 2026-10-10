@@ -90,7 +90,7 @@ NOTICE.md                 credits, licensing, and why no upstream code is vendor
 zte_unlock/               the factory-mode client
 firmware/                 the V9.0.11P1N40 downgrade image, vendored
 reference/forum_posts.md  the source posts this writeup is derived from
-tests/                    AES conformance + protocol tests
+tests/                    padding, handshake and status-page parsing tests
 ```
 
 ## Credits
@@ -125,8 +125,12 @@ handshake, written so this procedure does not depend on any single upstream
 binary continuing to exist.
 
 ```sh
+pip install -e .
 python3 -m zte_unlock -i 192.168.1.1
 ```
+
+Two dependencies, both installed by the above: `cryptography` for AES and
+`psutil` for the MAC check.
 
 Upstream tools it is compatible with:
 

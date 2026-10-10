@@ -73,16 +73,65 @@ class TestInfo:
         assert StatusServer.seen
         assert all(method == "GET" for method, _ in StatusServer.seen)
 
+    def test_reports_when_no_version_field_is_present(self, status_server, capsys):
+        """A page with only unrelated labels must still say so.
+
+        The fields dict can be non-empty while containing none of the four
+        labels -- that has to produce the hint, not a blank report with a
+        success exit code.
+        """
+        global STATUS_PAGE
+        original = STATUS_PAGE
+        STATUS_PAGE = b"<table><tr><td>Uptime</td><td>99 days</td></tr></table>"
+        try:
+            rc = factory_mode.main(
+                ["-i", "127.0.0.1", "-p", str(status_server), "--info"]
+            )
+        finally:
+            STATUS_PAGE = original
+
+        assert rc == 0
+        assert "no version fields found" in capsys.readouterr().out
+
     def test_states_that_nothing_changed(self, status_server, capsys):
         factory_mode.main(["-i", "127.0.0.1", "-p", str(status_server), "--info"])
 
         assert "nothing was changed" in capsys.readouterr().out
 
+    def test_survives_a_non_http_reply(self):
+        """A read-only diagnostic must not raise a traceback.
+
+        http.client.HTTPException is not an OSError, so a socket that answers
+        with garbage would otherwise crash -- which is the opposite of useful
+        when someone is trying to work out why their ONT is unreachable.
+        """
+        import socket
+        import threading
+
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        port = server.getsockname()[1]
+
+        def serve():
+            conn, _ = server.accept()
+            conn.recv(4096)
+            conn.sendall(b"NOT-HTTP GARBAGE\r\n\r\n")
+            conn.close()
+
+        threading.Thread(target=serve, daemon=True).start()
+        try:
+            rc = factory_mode.main(["-i", "127.0.0.1", "-p", str(port), "-t", "2", "--info"])
+        finally:
+            server.close()
+
+        assert rc == 1
+
     def test_unreachable_host_exits_nonzero(self, capsys):
         rc = factory_mode.main(["-i", "127.0.0.1", "-p", "1", "-t", "1", "--info"])
 
         assert rc == 1
-        assert "cannot reach" in capsys.readouterr().err
+        assert "cannot read" in capsys.readouterr().err
 
 
 class TestSuccessOutputWarns:

@@ -5,8 +5,6 @@ whitespace and could pick up unrelated text. These lock in the structural
 behaviour, including the cases that made the old approach wrong.
 """
 
-import pytest
-
 from zte_unlock.factory_mode import _parse_status_fields
 
 SIMPLE = """<html><body><table>
@@ -70,12 +68,48 @@ class TestStructureOverText:
 
         assert fields == {"device type": "F670LV9.0"}
 
+    def test_unclosed_cells_still_yield_the_value(self):
+        """Embedded web UIs routinely leave tags unclosed."""
+        page = "<table><tr><td>Software Version<td>V9.0.11P1N40</table>"
+
+        assert _parse_status_fields(page)["software version"] == "V9.0.11P1N40"
+
+    def test_extra_columns_do_not_hide_the_value(self):
+        page = ("<table><tr><td>Software Version</td>"
+                "<td>V9.0.11P1N40</td><td>extra</td></tr></table>")
+
+        assert _parse_status_fields(page)["software version"] == "V9.0.11P1N40"
+
+    def test_non_breaking_space_in_the_label(self):
+        """Firmware pages write Software&nbsp;Version for the same field."""
+        page = ("<table><tr><td>Software&nbsp;Version</td>"
+                "<td>V9.0.11P1N40</td></tr></table>")
+
+        assert _parse_status_fields(page)["software version"] == "V9.0.11P1N40"
+
+    def test_div_layout_falls_back_to_text_scanning(self):
+        """Not a table at all: the fallback must still report something."""
+        page = "<div>Software Version</div><div>V9.0.11P1N40</div>"
+
+        assert _parse_status_fields(page)["software version"] == "V9.0.11P1N40"
+
     def test_tolerates_malformed_html_without_raising(self):
         """Must never crash the diagnostic path."""
         page = "<table><tr><td>Software Version<td>V9.0.11P1N40</table><<<>>>"
 
-        # Whatever it recovers, it must not raise.
+        # Whatever it recovers, it must not raise, and must be a dict.
         assert isinstance(_parse_status_fields(page), dict)
+
+    def test_never_returns_garbage_keys(self):
+        """The parser must not invent concatenated labels.
+
+        An earlier version produced keys like "software versionv9.0.11p1n40"
+        from unclosed markup, which would be printed as a bogus version.
+        """
+        page = "<table><tr><td>Software Version<td>V9.0.11P1N40</table>"
+
+        for key in _parse_status_fields(page):
+            assert "v9.0" not in key.lower()
 
 
 class TestHeaderCells:
