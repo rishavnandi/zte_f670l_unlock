@@ -1,5 +1,17 @@
 # Troubleshooting
 
+> If you are here because something is already broken, I am not responsible and
+> I will not be pretending otherwise. What I will do is point you at the thing
+> that most likely caused it, in the order it actually tends to happen.
+>
+> Before you read on: if you flashed firmware, hit the hardware reset button, or
+> ran `upgradetest sdefconf 35`, some of these are not recoverable by reading a
+> webpage. Say so in your post and someone on the forum may have a way back.
+>
+> Also check you did not skip [GUIDE.md §1](GUIDE.md#1-before-you-touch-anything).
+> A missing config backup turns most of these into much bigger problems than
+> they look.
+
 Ordered by how often each one actually comes up.
 
 ---

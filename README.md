@@ -1,5 +1,32 @@
 # Unlock an Airtel Xstream ZTE F670L ONT
 
+> ### Read this first
+>
+> I am not responsible for your router. Not for the bricked ones, not for the
+> locked ones, not for the ones where the PPPoE went quiet and you are now
+> arguing with Airtel. I wrote down what worked for me and I am sharing it
+> because it is useful, not because I am your warranty.
+>
+> If you brick it, that is between you and the ONT. If you point the finger at
+> me, I will laugh at you. Nothing here comes with a warranty, and the forum
+> threads this came from are full of people who skipped a step and regretted
+> it — read them and you will see the pattern.
+>
+> So please:
+>
+> - Back up your config before you touch anything. [GUIDE.md](GUIDE.md) §1 says
+>   how, and it is the step people skip and regret.
+> - Do not flash firmware you have not verified. `firmware/` in this repo ships
+>   with a sha256 for exactly this reason.
+> - Do not use the hardware reset button to "fix" something. That is how you
+>   lose a working unlock permanently.
+> - Do not do any of this on hardware you do not own. See the note below.
+>
+> The people this is actually built on — `@BornArcher8` and the rest of the
+> forum — had the same exposure and took the same care. The forum posts are
+> still up, and they are the primary source. If something here contradicts
+> them, believe them.
+
 These are my notes from unlocking my own ZTE F670L GPON ONT (Airtel Xstream, India)
 in April 2025: opening telnet, clearing the ISP region lock, restoring PPPoE and
 SIP, and reaching bridge mode.

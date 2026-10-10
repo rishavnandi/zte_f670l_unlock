@@ -1,5 +1,16 @@
 # Unlocking the ZTE F670L — full walkthrough
 
+> **You are about to do something that can brick your router.**
+>
+> I am not responsible for what happens next. If it bricks, you bricked it. If
+> you point the finger at me, I will laugh at you — this is exactly the path
+> that worked for me, and the only person who lost anything here is the person
+> who skipped a step I wrote down in bold.
+>
+> Do not start until you have done [§1](#1-before-you-touch-anything). Screenshots
+> first. It is the step everyone skips, and it is the only thing standing between
+> you and re-entering your PPPoE details blind.
+
 This is the exact path I took on my own ZTE F670L GPON ONT on Airtel Xstream,
 firmware `V9.0.10P18N2B`, web UI at `192.168.1.1`.
 
