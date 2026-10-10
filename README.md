@@ -59,7 +59,7 @@ is just getting a shell to type it into.
 
 ## The procedure in one line
 
-Open telnet (`python3 -m zte_unlock`) -> `upgradetest sdefconf 198`
+Open telnet (`uv run zte_unlock`) -> `upgradetest sdefconf 198`
 -> re-enter PPPoE and SIP credentials -> (optional) downgrade firmware and use the
 inspect-element trick for bridge mode.
 
@@ -125,12 +125,11 @@ handshake, written so this procedure does not depend on any single upstream
 binary continuing to exist.
 
 ```sh
-pip install -e .
-python3 -m zte_unlock -i 192.168.1.1
+uv run zte_unlock -i 192.168.1.1
 ```
 
-Two dependencies, both installed by the above: `cryptography` for AES and
-`psutil` for the MAC check.
+`uv run` handles the virtualenv and installs both dependencies: `cryptography`
+for AES and `psutil` for the MAC check.
 
 Upstream tools it is compatible with:
 

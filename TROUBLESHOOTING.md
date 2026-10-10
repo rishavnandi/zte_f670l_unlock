@@ -47,11 +47,11 @@ April does not work in June.
 **Fix:** pass your actual web UI credentials.
 
 ```sh
-python3 -m zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
+uv run zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
 ```
 
 Also worth trying: factory-reset the ONT and run again, and set the adapter MAC
-to `00:07:29:55:35:57` (`python3 -m zte_unlock --check-mac` will tell you whether
+to `00:07:29:55:35:57` (`uv run zte_unlock --check-mac` will tell you whether
 a local interface currently has it).
 
 ---
@@ -68,7 +68,7 @@ including the trailing `\`**.
 telnet 192.168.1.1
 ```
 
-`python3 -m zte_unlock` prints the credentials on their own lines, so this does
+`uv run zte_unlock` prints the credentials on their own lines, so this does
 not come up when using it.
 
 ---

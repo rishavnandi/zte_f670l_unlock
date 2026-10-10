@@ -39,7 +39,7 @@ or locked config, and a factory reset costs you the bridge-mode setup entirely.
 
 ### What is and is not dangerous
 
-`python3 -m zte_unlock` is **read-only with respect to your configuration**:
+`uv run zte_unlock` is **read-only with respect to your configuration**:
 
 - It does not flash, upload, or rewrite firmware
 - It does not reboot the ONT
@@ -121,15 +121,15 @@ wireless too. Connect by wire and set it there.
 Telnet is disabled in this firmware. Factory mode is used to open it and hand you
 temporary credentials.
 
-This repo ships its own implementation:
+This repo ships its own implementation. With [uv](https://docs.astral.sh/uv/)
+installed, no setup is needed:
 
 ```sh
-pip install -e .
-python3 -m zte_unlock -i 192.168.1.1
+uv run zte_unlock -i 192.168.1.1
 ```
 
-Two dependencies, both required: `cryptography` for AES, and `psutil` for the
-MAC check.
+`uv run` creates the virtualenv and installs the two dependencies on first use:
+`cryptography` for AES, and `psutil` for the MAC check.
 
 It prints the telnet username and password when it succeeds.
 
@@ -138,7 +138,7 @@ factory account out about a month after activation, so the built-in list of
 factory username/password pairs stops working on older connections:
 
 ```sh
-python3 -m zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
+uv run zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
 ```
 
 This is the single most common cause of "no credential pair worked".
