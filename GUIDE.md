@@ -24,8 +24,7 @@ Airtel has since patched on newer firmware. Read the compatibility table in
 [README.md](README.md) before starting. On `V9.0.10P18N3D` and later, steps 1 and 6
 do not work at all.
 
-Throughout, `<angle-brackets>` mean "substitute your own value". Never commit real
-credentials.
+Throughout, `<angle-brackets>` mean "substitute your own value".
 
 ---
 
