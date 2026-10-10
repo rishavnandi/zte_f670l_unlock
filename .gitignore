@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# decrypted configs contain PPPoE, SIP and TR-069 credentials -- never commit them
+db_user_cfg.xml
+debug-decry-cfg
+*_cfg.xml
+
+# downloaded tool binaries
+zteOnu
+zteOnu_*.tar.gz
+
+# credentials
+*.env
+secrets*
