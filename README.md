@@ -87,7 +87,7 @@ means the bridge-mode section of [GUIDE.md](GUIDE.md) will not work for you.
 GUIDE.md                  the full numbered walkthrough
 TROUBLESHOOTING.md        error strings -> causes and fixes
 NOTICE.md                 credits, licensing, and why no upstream code is vendored
-zte_unlock/               the factory-mode client (no dependencies)
+zte_unlock/               the factory-mode client
 firmware/                 the V9.0.11P1N40 downgrade image, vendored
 reference/forum_posts.md  the source posts this writeup is derived from
 tests/                    AES conformance + protocol tests

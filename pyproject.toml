@@ -13,10 +13,10 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 
-# No runtime dependencies. AES-192-ECB is implemented in-tree because the
-# Python standard library has no AES and this is the only cipher the
-# ZTE ONT factory-mode protocol uses.
-dependencies = []
+dependencies = [
+    "cryptography>=42",  # AES-192-ECB, which the stdlib does not provide
+    "psutil>=5.9",       # cross-platform interface enumeration for --check-mac
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]

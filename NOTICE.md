@@ -19,9 +19,12 @@ These come from the ONT's own firmware behaviour. They are documented publicly
 at [hack-gpon.org](https://hack-gpon.org/ont-zte-f6005v3/#enable-telnet) and in
 the [broadband.forum threads](reference/forum_posts.md) this project cites.
 
-Everything else here — the AES implementation, the handshake state machine,
-credential handling, error messages, CLI, tests and documentation — was written
-for this repository.
+Everything else here — the handshake state machine, credential handling, the
+protocol-specific zero padding, error messages, CLI, tests and documentation —
+was written for this repository.
+
+The AES primitive itself comes from the `cryptography` library, not from this
+code.
 
 ## Upstream projects this is compatible with
 
@@ -51,9 +54,17 @@ repository remaining reachable is fragile. This implementation means the guide i
 
 ## Verification
 
-The AES-192-ECB cipher in `zte_unlock/aes.py` was written from FIPS-197 and
-cross-checked against OpenSSL, pycryptodome and `cryptography` across all three
-key sizes with randomised keys and lengths.
+The cipher comes from `cryptography`, so its correctness is that project's
+responsibility. What this repository owns is the protocol-specific zero padding,
+which is **not** PKCS#7: it pads with NULs and appends a whole block even when
+the input is already aligned. That is cross-checked against the OpenSSL CLI
+across all three key sizes with randomised keys and lengths, and pinned to the
+FIPS-197 known-answer vector in the tests.
+
+An earlier version of this repository hand-rolled the cipher instead of taking a
+dependency. It was replaced after review: the primitive is not the interesting
+part, and the hand-rolled key schedule had a bug that AES-128 and AES-256 passed
+straight over while only AES-192 — the size the protocol actually uses — failed.
 
 Protocol compatibility was verified by **differential testing against the
 compiled upstream Go binary**: both clients were pointed at the same mock ONT and

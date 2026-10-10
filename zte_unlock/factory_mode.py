@@ -23,6 +23,8 @@ import sys
 import time
 from urllib import parse
 
+import psutil
+
 from . import aes
 
 __all__ = ["FactoryError", "FactoryMode", "open_factory_mode"]
@@ -384,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
         return _show_info(args)
 
     if args.check_mac:
-        return _check_mac()
+        return _check_mac(args.ip)
 
     try:
         user, password = open_factory_mode(
@@ -461,92 +463,67 @@ def _show_info(args) -> int:
     return 0
 
 
-def _check_mac() -> int:
-    """Report whether any local interface carries the magic MAC."""
+def _check_mac(ip: str) -> int:
+    """Report whether the interface reaching the ONT carries the magic MAC.
+
+    Only the interface that routes to the ONT is reported, since that is the
+    one whose MAC has to change. Windows will not let you set a
+    locally-administered (00:-prefixed) MAC on a wireless adapter, so this is
+    mainly useful for confirming a wired one.
+    """
+    magic = _MAGIC_MAC.lower()
+
+    host, _, port = ip.partition(":")
     try:
-        raw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            raw.connect(("192.168.1.1", 1))
-            local_ip = raw.getsockname()[0]
-        finally:
-            raw.close()
+        route = _route_to(host, int(port) if port else 80)
     except OSError as exc:
-        print(f"error: cannot determine local interface: {exc}", file=sys.stderr)
+        print(f"error: cannot determine the route to {host}: {exc}", file=sys.stderr)
         return 1
 
-    # Look at the interface bound to the address that would reach the ONT,
-    # not the ARP table, which holds the ONT's own MAC rather than ours.
-    found = False
-    for interface in net_ifaces():
-        addresses = interface.get("addr", []) or []
-        for family, mac in addresses:
-            if family != socket.AF_INET or mac != local_ip:
-                continue
-            found = True
-            if mac_is_magic(interface.get("link", "")):
-                print(f"ok: {local_ip} uses {_MAGIC_MAC} on {interface['name']}")
-                return 0
-            print(
-                f"{local_ip} uses {interface.get('link', 'unknown')}, "
-                f"expected {_MAGIC_MAC} (interface {interface['name']})"
-            )
-            return 1
+    if route is None:
+        print(f"  No local address is assigned to the route to {host}.")
+        return 1
 
-    if not found:
-        print(f"no interface found for {local_ip}")
-    else:  # pragma: no cover - defensive
-        print(f"no interface found for {local_ip}")
+    name, local_ip = route
+    mac = ""
+    for addr in psutil.net_if_addrs().get(name, []):
+        if addr.family == psutil.AF_LINK:
+            mac = _normalise_mac(addr.address)
+            break
+
+    if mac == magic:
+        print(f"  ok: {name} ({local_ip}) uses {_MAGIC_MAC}")
+        return 0
+
+    print(f"  {name} ({local_ip}) uses {mac or '(no MAC)'}, expected {_MAGIC_MAC}")
+    print("  Windows only allows that on a wired adapter; on Linux it works")
+    print("  on wireless too.")
     return 1
 
 
-def mac_is_magic(link_address: str) -> bool:
-    """True when the interface address is the magic MAC."""
-    return link_address.replace("-", ":").lower() == _MAGIC_MAC.lower()
+def _route_to(host: str, port: int) -> tuple[str, str] | None:
+    """Return (interface name, local address) for the route to host.
 
-
-def net_ifaces() -> list[dict]:
-    """Local interfaces as [{name, addr: [(family, ip)], link: mac}].
-
-    Uses psutil when present, otherwise the stdlib where possible. Kept
-    dependency-free, so the common macOS/Linux cases are handled directly and
-    anything else falls back to an empty list.
+    Ask the kernel which source address it would use, then match that address
+    back to an interface. No packet is sent.
     """
-    interfaces: list[dict] = []
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        raw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            raw.connect(("192.168.1.1", 1))
-            interfaces.append({
-                "name": "default-route",
-                "addr": [(socket.AF_INET, raw.getsockname()[0])],
-                "link": "",
-            })
-        finally:
-            raw.close()
-    except OSError:
-        pass
-
-    try:
-        import psutil  # type: ignore
-    except ImportError:
-        return interfaces
+        probe.connect((host, port))
+        local_ip = probe.getsockname()[0]
+    finally:
+        probe.close()
 
     for name, addrs in psutil.net_if_addrs().items():
-        entry = {
-            "name": name,
-            "addr": [
-                (a.family, a.address)
-                for a in addrs
-                if getattr(a, "family", None) in (socket.AF_INET,)
-            ],
-            "link": next(
-                (a.address for a in addrs
-                 if getattr(a, "family", None) == psutil.AF_LINK),
-                "",
-            ),
-        }
-        interfaces.append(entry)
-    return interfaces
+        for addr in addrs:
+            if addr.family == socket.AF_INET and addr.address == local_ip:
+                return name, local_ip
+    return None
+
+
+def _normalise_mac(address: str) -> str:
+    """psutil reports MACs with dashes on some platforms; compare colons."""
+    return address.replace("-", ":").lower()
 
 
 if __name__ == "__main__":

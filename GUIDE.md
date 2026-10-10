@@ -121,11 +121,15 @@ wireless too. Connect by wire and set it there.
 Telnet is disabled in this firmware. Factory mode is used to open it and hand you
 temporary credentials.
 
-This repo ships its own implementation, with no dependencies:
+This repo ships its own implementation:
 
 ```sh
+pip install -e .
 python3 -m zte_unlock -i 192.168.1.1
 ```
+
+Two dependencies: `cryptography` for AES, and `psutil` for the optional MAC
+check.
 
 It prints the telnet username and password when it succeeds.
 
