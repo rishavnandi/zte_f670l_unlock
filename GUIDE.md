@@ -13,6 +13,60 @@ credentials.
 
 ---
 
+## 0. Protecting an already-unlocked ONT
+
+> **Read this before running anything on an ONT you have already modified.**
+
+If your ONT is already unlocked and running a firmware you depend on, the risk is
+not the tool — it is the testing. Some things can put you back on stock firmware
+or locked config, and a factory reset costs you the bridge-mode setup entirely.
+
+### What is and is not dangerous
+
+`python3 -m zte_unlock` is **read-only with respect to your configuration**:
+
+- It does not flash, upload, or rewrite firmware
+- It does not reboot the ONT
+- It does not run `upgradetest sdefconf`, so it does not change your region code
+- It does not reset your config
+
+It only reads factory mode to obtain **temporary telnet credentials**, which are
+discarded when the process exits.
+
+The genuinely destructive operations are all things *you* would type by hand:
+
+| Operation | Risk |
+| --- | --- |
+| Web UI → Software Upgrade | Overwrites firmware. This is the one that can lose your bridge build. |
+| `upgradetest sdefconf 35` | Re-locks the ONT to the ISP profile |
+| `upgradetest sdefconf 198` | Resets settings to defaults; you re-enter PPPoE/SIP |
+| Hardware reset button | Full factory reset — firmware returns to stock, unlock gone |
+| `--telnet` (Go tool only) | Writes permanent telnet config to the ONT |
+
+### Before you test anything
+
+1. **Back up the firmware you depend on** — copy the current `.bin` off the ONT
+   through the web UI if you can, or at minimum record the exact version string
+   from the status page.
+2. **Keep `firmware/ZXHN_F670L_V9.0.11P1N40.bin` intact** and verify its hash:
+   ```sh
+   shasum -a 256 -c reference/firmware/ZXHN_F670L_V9.0.11P1N40.bin.sha256
+   ```
+   If that image is what gives you bridge mode, it is the single most valuable
+   file you have.
+3. **Do not touch Software Upgrade or the hardware reset button** during testing.
+4. **Test the tool only**, not the unlock — you are already unlocked, so there is
+   nothing to gain by re-running `sdefconf 198`.
+
+### If you want to re-verify bridge mode later
+
+Re-enabling bridge mode on an already-unlocked ONT should not require touching
+firmware. If you *do* need a firmware change to get bridge mode back, stop and
+confirm you have a verified copy of the current build first — that is the one
+path where you can lose it.
+
+---
+
 ## 1. Before you touch anything
 
 **Take screenshots now.** This is the step everyone skips and then regrets. Unlocking

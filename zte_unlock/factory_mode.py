@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import base64
 import http.client
+import re
 import socket
 import sys
 import time
@@ -372,7 +373,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=f"verify a local interface uses {_MAGIC_MAC} (needed for --new firmware)",
     )
+    parser.add_argument(
+        "--info",
+        action="store_true",
+        help="read the ONT status page and print the firmware version, then exit",
+    )
     args = parser.parse_args(argv)
+
+    if args.info:
+        return _show_info(args)
 
     if args.check_mac:
         return _check_mac()
@@ -396,6 +405,59 @@ def main(argv: list[str] | None = None) -> int:
     print(f"    pass: {password}")
     print()
     print("  These change on every reboot. Re-run this script when needed.")
+    print()
+    print("  This command only reads factory mode. It does not flash firmware,")
+    print("  reboot the ONT, or change your region code or settings.")
+    print()
+    print("  Do NOT use the web UI Software Upgrade page or the hardware reset")
+    print("  button just to test this -- those are what overwrite firmware.")
+    return 0
+
+
+def _show_info(args) -> int:
+    """Print what the ONT reports about itself.
+
+    Read-only: this fetches the status page and changes nothing. Useful for
+    confirming which firmware is loaded before touching anything else.
+    """
+    url = f"http://{args.ip}:{args.port}/"
+    try:
+        conn = http.client.HTTPConnection(args.ip, args.port, timeout=args.timeout)
+        try:
+            conn.request("GET", "/", headers=_HEADERS)
+            resp = conn.getresponse()
+            body = resp.read().decode(errors="replace")
+        finally:
+            conn.close()
+    except OSError as exc:
+        print(f"error: cannot reach {url}: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"  ONT {args.ip} responded {resp.status}")
+    print()
+
+    # The status page layout varies by firmware; pull any labelled field whose
+    # value looks like a version or model string.
+    text = re.sub(r"<[^>]+>", " ", body)
+
+    fields = {
+        "Device Type": r"Device\s*Type\s+V?([0-9A-Za-z][0-9A-Za-z.\-]*)",
+        "Hardware Version": r"Hardware\s*Version\s+V?([0-9][0-9A-Za-z.]*)",
+        "Software Version": r"Software\s*Version\s+V?([0-9][0-9A-Za-z.]*)",
+        "Boot Version": r"Boot\s*Version\s+V?([0-9][0-9A-Za-z.]*)",
+    }
+    found = False
+    for label, pattern in fields.items():
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            print(f"  {label}: {match.group(1).strip()}")
+            found = True
+
+    if not found:
+        print("  (no version fields found -- the status page layout may differ)")
+
+    print()
+    print("  Read-only: nothing was changed on the ONT.")
     return 0
 
 
