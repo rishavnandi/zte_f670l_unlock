@@ -1,6 +1,13 @@
 __pycache__/
 *.pyc
+*.pyo
 .DS_Store
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
 
 # decrypted configs contain PPPoE, SIP and TR-069 credentials -- never commit them
 db_user_cfg.xml

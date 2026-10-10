@@ -24,7 +24,7 @@ is just getting a shell to type it into.
 
 ## The procedure in one line
 
-Open telnet with [`stich86/zteOnu`](https://github.com/stich86/zteOnu) → `upgradetest sdefconf 198`
+Open telnet (`python3 -m zte_unlock`) → `upgradetest sdefconf 198`
 → re-enter PPPoE and SIP credentials → (optional) downgrade firmware and use the
 inspect-element trick for bridge mode.
 
@@ -51,9 +51,11 @@ means the bridge-mode section of [GUIDE.md](GUIDE.md) will not work for you.
 ```
 GUIDE.md                  the full numbered walkthrough
 TROUBLESHOOTING.md        error strings -> causes and fixes
+NOTICE.md                 credits, licensing, and why no upstream code is vendored
+zte_unlock/               the factory-mode client (no dependencies)
 firmware/                 the V9.0.11P1N40 downgrade image, vendored
 reference/forum_posts.md  the source posts this writeup is derived from
-scripts/                  helper scripts for telnet and config extraction
+tests/                    AES conformance + protocol tests
 ```
 
 ## Credits
@@ -67,12 +69,29 @@ Everything here was assembled from public discussion on
 - [SIP setup on Airtel ZTE F670LV9](https://broadband.forum/threads/217511/)
 
 The unlock and PPPoE procedure came from `@BornArcher8`. The SIP credentials and the
-bridge-mode firmware downgrade were worked out independently. Upstream tools:
+bridge-mode firmware downgrade were worked out independently.
+
+### The tool in `zte_unlock/`
+
+`zte_unlock/` is an independent implementation of the ONT factory-mode
+handshake, written so this procedure does not depend on any single upstream
+binary continuing to exist.
+
+```sh
+python3 -m zte_unlock -i 192.168.1.1
+```
+
+Upstream tools it is compatible with:
 
 - [stich86/zteOnu](https://github.com/stich86/zteOnu) (fork of
   [Septrum101/zteOnu](https://github.com/Septrum101/zteOnu)) — opens telnet
 - [douniwan5788/zte_modem_tools](https://github.com/douniwan5788/zte_modem_tools) — alternative Python implementation
 - [zainarbani/ztelnet](https://github.com/zainarbani/ztelnet) — Windows `.exe` alternative
+
+Both zteOnu projects are **AGPL-3.0**, which is why none of their source appears
+here: copying it would make this repository's documentation AGPL too. The
+protocol constants are reproduced because interoperability requires them; the
+implementation is original. See [NOTICE.md](NOTICE.md).
 
 ## About the vendored firmware
 

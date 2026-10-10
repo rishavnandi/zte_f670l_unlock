@@ -35,29 +35,29 @@ April does not work in June.
 **Fix:** pass your actual web UI credentials.
 
 ```sh
-./zteOnu -i 192.168.1.1 -u <webui_user> -p <webui_password>
+python3 -m zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
 ```
 
-Also worth trying, in order:
-
-1. Factory-reset the ONT, then run without `--new`
-2. Set the adapter MAC to `00:07:29:55:35:57` and run with `--new`
+Also worth trying: factory-reset the ONT and run again, and set the adapter MAC
+to `00:07:29:55:35:57` (`python3 -m zte_unlock --check-mac` will tell you whether
+a local interface currently has it).
 
 ---
 
 ## `Access Denied` immediately at the telnet login prompt
 
 **Cause:** the credentials were copied wrong out of the tool's output. This is the
-single most common mistake.
+single most common mistake with the original Go tool, whose output is delimited.
 
-The output is delimited. The username is **between `=` and `&`**. The password is
-**after the `=`, not including the trailing `\`**.
+The username is **between `=` and `&`**. The password is **after the `=`, not
+including the trailing `\`**.
 
 ```sh
 telnet 192.168.1.1
-# paste exactly: username between = and &
-#               password after = , drop the backslash
 ```
+
+`python3 -m zte_unlock` prints the credentials on their own lines, so this does
+not come up when using it.
 
 ---
 
@@ -66,6 +66,7 @@ telnet 192.168.1.1
 **Fix:** the telnet security level is too restrictive.
 
 ```sh
+# only the original Go tool exposes this
 ./zteOnu -i 192.168.1.1 --telnet --seclvl 3
 ```
 
@@ -79,6 +80,7 @@ factory reset. Re-run the tool and use the new credentials.
 This is also why the *permanent* telnet option exists:
 
 ```sh
+# only the original Go tool exposes this
 ./zteOnu -i 192.168.1.1 --telnet
 # then: root / Zte521
 ```

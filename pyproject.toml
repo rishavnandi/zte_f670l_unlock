@@ -1,0 +1,35 @@
+[project]
+name = "zte_unlock"
+version = "1.0.0"
+description = "Open telnet on a ZTE ONU via factory mode, for the ZTE F670L unlock procedure"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "WTFPL" }
+keywords = ["zte", "f670l", "ont", "gpon", "airtel", "telnet"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking",
+]
+
+# No runtime dependencies. AES-192-ECB is implemented in-tree because the
+# Python standard library has no AES and this is the only cipher the
+# ZTE ONT factory-mode protocol uses.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+zte_unlock = "zte_unlock.factory_mode:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["zte_unlock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

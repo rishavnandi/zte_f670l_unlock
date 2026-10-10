@@ -1,0 +1,63 @@
+# NOTICE
+
+This repository contains an independent implementation of the ZTE ONU
+factory-mode interface. No source code was copied from any other project.
+
+## Protocol facts are not copyrightable expression
+
+The following are interface elements — they define what the ONT firmware
+speaks and accepts — and are reproduced because interoperability requires it:
+
+- Endpoint paths (`/webFac`, `/webFacEntry`)
+- Command strings (`SendSq.gch`, `RequestFactoryMode.gch`, `CheckLoginAuth.gch`,
+  `SendInfo.gch`, `FactoryMode.gch`)
+- The AES key pools and the magic MAC constant `00:07:29:55:35:57`
+- The key derivation rule (pool window indexed by the request's seconds value,
+  XORed with `0xA5`)
+
+These come from the ONT's own firmware behaviour. They are documented publicly
+at [hack-gpon.org](https://hack-gpon.org/ont-zte-f6005v3/#enable-telnet) and in
+the [broadband.forum threads](reference/forum_posts.md) this project cites.
+
+Everything else here — the AES implementation, the handshake state machine,
+credential handling, error messages, CLI, tests and documentation — was written
+for this repository.
+
+## Upstream projects this is compatible with
+
+This tool speaks the same protocol as, and can replace, these projects. Neither
+was copied; both remain the reference implementations of the approach:
+
+| Project | Author | License | Role |
+| --- | --- | --- | --- |
+| [stich86/zteOnu](https://github.com/stich86/zteOnu) | stich86 | **AGPL-3.0** | The fork that works on current Airtel firmware (V9.0.10P18N2B) |
+| [Septrum101/zteOnu](https://github.com/Septrum101/zteOnu) | Septrum101 | **AGPL-3.0** | The original tool stich86's fork derives from |
+
+**AGPL-3.0 is why no upstream code appears in this repository.** Vendoring or
+copying that source would have made this repository — including its
+documentation — AGPL-3.0. This is an independent implementation so the guide and
+tooling can stay under WTFPL.
+
+Other implementations of the same approach, for reference:
+
+- [douniwan5788/zte_modem_tools](https://github.com/douniwan5788/zte_modem_tools) — AGPL-3.0
+- [zainarbani/ztelnet](https://github.com/zainarbani/ztelnet) — ships a Windows binary
+
+## Why this exists
+
+Upstream projects are stable and public, but a procedure that depends on one
+repository remaining reachable is fragile. This implementation means the guide in
+[../GUIDE.md](../GUIDE.md) keeps working even if a tool disappears.
+
+## Verification
+
+The AES-192-ECB cipher in `zte_unlock/aes.py` was written from FIPS-197 and
+cross-checked against OpenSSL, pycryptodome and `cryptography` across all three
+key sizes with randomised keys and lengths. It is **not** validated against real
+ONT hardware — see the caveats in [../GUIDE.md](../GUIDE.md).
+
+## Trademarks
+
+ZTE and the F670L are trademarks of their respective owners. This project is
+unofficial and unaffiliated. Firmware images in `firmware/` remain the property
+of ZTE and are excluded from this repository's license.

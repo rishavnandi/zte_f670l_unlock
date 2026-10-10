@@ -48,64 +48,55 @@ wireless too. Connect by wire and set it there.
 
 ## 2. Open telnet
 
-Telnet is disabled in this firmware. The tool exploits factory mode to open it and
-hand you temporary credentials.
+Telnet is disabled in this firmware. Factory mode is used to open it and hand you
+temporary credentials.
 
-Grab [`stich86/zteOnu`](https://github.com/stich86/zteOnu) (v0.0.7 has prebuilt
-binaries for Linux, macOS and Windows, both architectures).
+This repo ships its own implementation, with no dependencies:
 
 ```sh
-# pick your platform, e.g. on macOS arm64
-tar xzf zteOnu_0.0.7_darwin_arm64.tar.gz
+python3 -m zte_unlock -i 192.168.1.1
 ```
 
-### Which variant to use
+It prints the telnet username and password when it succeeds.
 
-Try the default first. If it fails, fall back to `--new`.
+**Pass your real web UI credentials if you have changed them.** Airtel locks the
+factory account out about a month after activation, so the built-in list of
+factory username/password pairs stops working on older connections:
 
 ```sh
+python3 -m zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
+```
+
+This is the single most common cause of "no credential pair worked".
+
+If the tool reports `session negotiation failed ... unknown error`, the firmware
+is patched and no method will work — see step 8.
+
+### The upstream tool
+
+If you would rather use the original binary, it does the same thing:
+
+```sh
+# https://github.com/stich86/zteOnu  (v0.0.7, AGPL-3.0)
+tar xzf zteOnu_0.0.7_linux_amd64.tar.gz
 ./zteOnu -i 192.168.1.1
 ```
 
-```sh
-# fallback: --new requires MAC 00:07:29:55:35:57 on the connecting adapter
-./zteOnu -i 192.168.1.1 --new
-```
+Useful flags there: `--telnet` enables *permanent* telnet (`root` / `Zte521`)
+instead of temporary credentials — convenient, but it widens the attack surface
+on a device sitting on your LAN. Prefer the temporary credentials and re-run when
+you need access again. `--seclvl 3` helps if you get `Permission Denied`.
 
-The tool prints its progress as numbered steps. Getting `step [0] reset factory: ok`
-and `step [1] request factory mode: ok` but then `step [2] send sq: unknown error`
-on all 5 retries means this firmware is patched — see step 8.
-
-**Pass your real web UI credentials if you have changed them.** The tool ships a list
-of factory username/password pairs, and Airtel locks the factory account out about a
-month after activation. If the built-in list fails, pass your own:
-
-```sh
-./zteOnu -i 192.168.1.1 -u <webui_user> -p <webui_password>
-```
-
-This is the single most common cause of "it just retries and never works".
-
-Other flags worth knowing:
-
-- `--telnet` — enable *permanent* telnet (`root` / `Zte521`) rather than temporary
-  credentials. Convenient, but it widens the attack surface on a device sitting on
-  your LAN; prefer the temporary credentials and re-run the tool if you need access again.
-- `--seclvl <1-3>` — telnet security level. Use `3` if you get `Permission Denied`.
-- `--port` / `--tp` — HTTP and telnet ports, default `80` / `23`.
+Both zteOnu projects are AGPL-3.0, which is why their source is not vendored
+here. See [NOTICE.md](NOTICE.md).
 
 ### Log in
-
-The tool prints a username and password. Parse it carefully — this trips people up.
-The username is **everything between `=` and `&`**; the password is **everything
-after the last `=`**, and the trailing `\` is *not* part of it.
 
 ```sh
 telnet 192.168.1.1
 ```
 
-If you get `Access Denied` at the login prompt itself, you copied the credentials
-wrong. If it worked once and stopped working after a reboot, that is expected —
+If it worked once and stopped working after a reboot, that is expected —
 **telnet credentials rotate on every reboot**. Re-run the tool.
 
 ---
