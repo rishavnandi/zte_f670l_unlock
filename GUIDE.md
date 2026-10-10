@@ -1,27 +1,27 @@
-# Unlocking the ZTE F670L — full walkthrough
+# Unlocking the ZTE F670L: full walkthrough
 
 > **You are about to do something that can brick your router.**
 >
 > I am not responsible for what happens next. If it bricks, you bricked it. If
-> you point the finger at me, I will laugh at you — this is exactly the path
+> you point the finger at me, I will laugh at you. This is exactly the path
 > that worked for me, and the only person who lost anything here is the person
 > who skipped a step I wrote down in bold.
 >
-> Do not start until you have done [§1](#1-before-you-touch-anything). Screenshots
+> Do not start until you have done [section 1](#1-before-you-touch-anything). Screenshots
 > first. It is the step everyone skips, and it is the only thing standing between
 > you and re-entering your PPPoE details blind.
 
 This is the exact path I took on my own ZTE F670L GPON ONT on Airtel Xstream,
 firmware `V9.0.10P18N2B`, web UI at `192.168.1.1`.
 
-It was not all my own work — the unlock command, the PPPoE credentials and the
+It was not all my own work: the unlock command, the PPPoE credentials and the
 port-binding steps came from other people on
 [india broadband forum](https://broadband.forum/), chiefly `@BornArcher8`. See
 the [Credits](README.md#credits) in the README.
 
-Steps 1–5 get you an unlocked ONT you control. Step 6 is optional and is the part
+Steps 1-5 get you an unlocked ONT you control. Step 6 is optional and is the part
 Airtel has since patched on newer firmware. Read the compatibility table in
-[README.md](README.md) before starting — on `V9.0.10P18N3D` and later, steps 1 and 6
+[README.md](README.md) before starting. On `V9.0.10P18N3D` and later, steps 1 and 6
 do not work at all.
 
 Throughout, `<angle-brackets>` mean "substitute your own value". Never commit real
@@ -34,7 +34,7 @@ credentials.
 > **Read this before running anything on an ONT you have already modified.**
 
 If your ONT is already unlocked and running a firmware you depend on, the risk is
-not the tool — it is the testing. Some things can put you back on stock firmware
+not the tool: it is the testing. Some things can put you back on stock firmware
 or locked config, and a factory reset costs you the bridge-mode setup entirely.
 
 ### What is and is not dangerous
@@ -53,15 +53,15 @@ The genuinely destructive operations are all things *you* would type by hand:
 
 | Operation | Risk |
 | --- | --- |
-| Web UI → Software Upgrade | Overwrites firmware. This is the one that can lose your bridge build. |
+| Web UI -> Software Upgrade | Overwrites firmware. This is the one that can lose your bridge build. |
 | `upgradetest sdefconf 35` | Re-locks the ONT to the ISP profile |
 | `upgradetest sdefconf 198` | Resets settings to defaults; you re-enter PPPoE/SIP |
-| Hardware reset button | Full factory reset — firmware returns to stock, unlock gone |
+| Hardware reset button | Full factory reset: firmware returns to stock, unlock gone |
 | `--telnet` (Go tool only) | Writes permanent telnet config to the ONT |
 
 ### Before you test anything
 
-1. **Back up the firmware you depend on** — copy the current `.bin` off the ONT
+1. **Back up the firmware you depend on**: copy the current `.bin` off the ONT
    through the web UI if you can, or at minimum record the exact version string
    from the status page.
 2. **Keep `firmware/ZXHN_F670L_V9.0.11P1N40.bin` intact** and verify its hash:
@@ -71,14 +71,14 @@ The genuinely destructive operations are all things *you* would type by hand:
    If that image is what gives you bridge mode, it is the single most valuable
    file you have.
 3. **Do not touch Software Upgrade or the hardware reset button** during testing.
-4. **Test the tool only**, not the unlock — you are already unlocked, so there is
+4. **Test the tool only**, not the unlock: you are already unlocked, so there is
    nothing to gain by re-running `sdefconf 198`.
 
 ### If you want to re-verify bridge mode later
 
 Re-enabling bridge mode on an already-unlocked ONT should not require touching
 firmware. If you *do* need a firmware change to get bridge mode back, stop and
-confirm you have a verified copy of the current build first — that is the one
+confirm you have a verified copy of the current build first. That is the one
 path where you can lose it.
 
 ---
@@ -86,13 +86,13 @@ path where you can lose it.
 ## 1. Before you touch anything
 
 **Take screenshots now.** This is the step everyone skips and then regrets. Unlocking
-resets every setting to factory defaults — you will have to re-enter PPPoE and SIP by
+resets every setting to factory defaults. You will have to re-enter PPPoE and SIP by
 hand afterwards, and if you did not write them down first, you are guessing.
 
 Screenshot all of:
 
-- **Network → WAN** (the PPPoE username is visible here)
-- **Voice → VoIP / SIP account**
+- **Network -> WAN** (the PPPoE username is visible here)
+- **Voice -> VoIP / SIP account**
 - Any WiFi SSID/password you care about
 - The firmware version, from the status page
 
@@ -106,12 +106,12 @@ a reachable account. Once unlocked and reconfigured you want to verify this anyw
 There is a second, older credential in circulation: the **Relationship ID** from
 legacy Airtel Xstream eBills. That applies to lines converted from DSL to fiber. If
 the account number fails and your line was converted, try the Relationship ID from an
-old bill. Airtel's own call centre does not know about either — this is documented in
+old bill. Airtel's own call centre does not know about either. This is documented in
 [the PPPoE thread](https://broadband.forum/threads/232038/).
 
 **Have Ethernet available.** The `--new` telnet method requires your adapter to have
 MAC `00:07:29:55:35:57`. Windows will not let you set a `00:`-prefixed MAC on a
-wireless adapter — on a wired adapter it works, and on Linux you can set it on
+wireless adapter. On a wired adapter it works, and on Linux you can set it on
 wireless too. Connect by wire and set it there.
 
 ---
@@ -144,7 +144,7 @@ python3 -m zte_unlock -i 192.168.1.1 -u <webui_user> -w <webui_password>
 This is the single most common cause of "no credential pair worked".
 
 If the tool reports `session negotiation failed ... unknown error`, the firmware
-is patched and no method will work — see step 8.
+is patched and no method will work. See step 8.
 
 ### The upstream tool
 
@@ -157,8 +157,8 @@ tar xzf zteOnu_0.0.7_linux_amd64.tar.gz
 ```
 
 Useful flags there: `--telnet` enables *permanent* telnet (`root` / `Zte521`)
-instead of temporary credentials — convenient, but it widens the attack surface
-on a device sitting on your LAN. Prefer the temporary credentials and re-run when
+instead of temporary credentials (convenient, but it widens the attack surface
+on a device sitting on your LAN). Prefer the temporary credentials and re-run when
 you need access again. `--seclvl 3` helps if you get `Permission Denied`.
 
 Both zteOnu projects are AGPL-3.0, which is why their source is not vendored
@@ -170,7 +170,7 @@ here. See [NOTICE.md](NOTICE.md).
 telnet 192.168.1.1
 ```
 
-If it worked once and stopped working after a reboot, that is expected —
+If it worked once and stopped working after a reboot, that is expected:
 **telnet credentials rotate on every reboot**. Re-run the tool.
 
 ---
@@ -186,7 +186,7 @@ upgradetest sdefconf 198
 198 is the stock manufacturer region code. Airtel India ships 35.
 
 > **Only use the bare command.** The thread also shows a `setmac 4 198/upgradetest sdefconf 198`
-> variant. It does not work — several people report that dropping the `setmac` part is
+> variant. It does not work. Several people report that dropping the `setmac` part is
 > exactly what made it succeed for them.
 
 **This resets all settings to factory defaults.** That is why step 1 exists.
@@ -207,20 +207,20 @@ Once unlocked you can make custom settings on `192.168.1.1` as normal.
 
 ## 4. Restore PPPoE
 
-The connection is dead after step 3. Re-enter it under **Network → WAN**:
+The connection is dead after step 3. Re-enter it under **Network -> WAN**:
 
 | Field | Value |
 | --- | --- |
 | Connection type | PPPoE |
 | Username | `0XXXXXXXXXXX_dsl@airtelbroadband.in` (copy from your screenshot) |
 | Password | your Airtel account number |
-| VLAN | as it was — **do not change this** |
+| VLAN | as it was: **do not change this** |
 | 802.1p priority | as it was |
 
 Get the VLAN ID right from your step-1 screenshot. It is not recoverable from the
 account number and getting it wrong looks exactly like a bad password.
 
-Uncheck "Default gateway" if you plan to put the ONT in bridge mode — otherwise the
+Uncheck "Default gateway" if you plan to put the ONT in bridge mode. Otherwise the
 ONT keeps advertising itself as your gateway. Leave it checked if the ONT will route
 for you.
 
@@ -228,7 +228,7 @@ for you.
 
 ## 5. Restore SIP (VoIP / landline)
 
-If you want the Airtel fixed line back, re-enter it under **Voice → VoIP**. The
+If you want the Airtel fixed line back, re-enter it under **Voice -> VoIP**. The
 credentials for Bihar and Jharkhand:
 
 | Field | Value |
@@ -238,26 +238,26 @@ credentials for Bihar and Jharkhand:
 | Password | `Nokia@1` |
 
 `bh` is the state code for Bihar, and Jharkhand reuses it for reasons nobody has
-explained. Other states use their own code — you will need to find yours, or
+explained. Other states use their own code. You will need to find yours, or
 recover the real values from the ISP profile.
 
 ---
 
-## 6. Bridge mode (optional — patched on newer firmware)
+## 6. Bridge mode (optional, patched on newer firmware)
 
 **Check first.** Go to **System Management** in the web UI. If there is no
 **Software Upgrade** page, Airtel has removed firmware changes and this whole section
 is dead for you. Skip to step 8.
 
 The bridge-mode option is present in the page but hidden. You can unhide it with
-devtools rather than needing a different firmware — but the setting does not survive
+devtools rather than needing a different firmware, but the setting does not survive
 a reboot on current firmware, which is why the downgrade is part of this.
 
 ### 6a. Downgrade the firmware
 
 Take the current config backup first if you have reconfigured anything.
 
-1. Web UI → **System Management → Software Upgrade**
+1. Web UI -> **System Management -> Software Upgrade**
 2. Upload `firmware/ZXHN_F670L_V9.0.11P1N40.bin` from this repo
 3. Let it reboot
 
@@ -271,13 +271,13 @@ shasum -a 256 -c reference/firmware/ZXHN_F670L_V9.0.11P1N40.bin.sha256
 
 ### 6b. The inspect-element trick
 
-1. Open **Network → WAN**
-2. Right-click the "Add" / connection-type dropdown → **Inspect**
+1. Open **Network -> WAN**
+2. Right-click the "Add" / connection-type dropdown -> **Inspect**
 3. In devtools, find the hidden `bridge` option and delete the `hidden` /
    `style="display:none"` attribute that hides it
 4. Select `Bridge` and save
 
-On `V9.0.11P1N40` this persists across reboots. On `18N2B` it does not — which is the
+On `V9.0.11P1N40` this persists across reboots. On `18N2B` it does not. That is the
 entire reason for the downgrade.
 
 ### 6c. Bind the bridge to a LAN port
@@ -285,9 +285,9 @@ entire reason for the downgrade.
 Bridge mode alone does nothing; a downstream router has to be plugged into the port
 you bind.
 
-1. **Network → Port Binding** (may be under Internet)
+1. **Network -> Port Binding** (may be under Internet)
 2. Select the bridge connection you just created
-3. Choose a LAN port — e.g. LAN 4. That port becomes your bridge port.
+3. Choose a LAN port, e.g. LAN 4. That port becomes your bridge port.
 4. Set **DHCP Port Control** for that same port to **Internet**
 
 Then run Ethernet from that LAN port on the ONT to the **WAN** port of your own router,
@@ -325,7 +325,7 @@ sendcmd 1 DB save                   # persist changes
 /etc/init.d/regioncode               # current region settings
 ```
 
-Example — change the super password:
+Example: change the super password:
 
 ```sh
 sendcmd 1 DB set UserInfo 0 Password <new_password>
@@ -343,12 +343,12 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 The quick triage, in order:
 
-1. **`step [2] send sq: unknown error`, all 5 retries** → firmware is patched
+1. **`step [2] send sq: unknown error`, all 5 retries** => firmware is patched
    (`18N3D`+). No workaround from this guide.
-2. **Everything retries with no output** → pass your real web UI credentials with
+2. **Everything retries with no output** => pass your real web UI credentials with
    `-u` / `-p`. The built-in factory list is locked out after ~1 month.
-3. **`Permission Denied` in telnet** → try `--seclvl 3`.
-4. **Telnet worked, now doesn't** → credentials rotated on reboot. Re-run the tool.
-5. **Bridge mode reverts after reboot** → you need the firmware downgrade first.
-6. **PPPoE won't authenticate** → check VLAN ID against your screenshot before
+3. **`Permission Denied` in telnet** => try `--seclvl 3`.
+4. **Telnet worked, now doesn't** => credentials rotated on reboot. Re-run the tool.
+5. **Bridge mode reverts after reboot** => you need the firmware downgrade first.
+6. **PPPoE won't authenticate** => check VLAN ID against your screenshot before
    suspecting the password.

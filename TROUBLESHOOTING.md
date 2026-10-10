@@ -8,7 +8,7 @@
 > ran `upgradetest sdefconf 35`, some of these are not recoverable by reading a
 > webpage. Say so in your post and someone on the forum may have a way back.
 >
-> Also check you did not skip [GUIDE.md §1](GUIDE.md#1-before-you-touch-anything).
+> Also check you did not skip [GUIDE.md section 1](GUIDE.md#1-before-you-touch-anything).
 > A missing config backup turns most of these into much bigger problems than
 > they look.
 
@@ -30,7 +30,7 @@ Steps 0 and 1 succeeding means the tool is talking to the ONT correctly. Step 2 
 where the actual exploit payload is sent, and it is being rejected.
 
 **Cause:** the firmware is patched. Confirmed on `V9.0.10P18N3D`. Changing the MAC
-and adding `--new` does not help — the patch is in the firmware's HTTP handler, not
+and adding `--new` does not help. The patch is in the firmware's HTTP handler, not
 in the request headers.
 
 **Not fixable from this guide.** You need either a firmware that is not patched, or
@@ -126,7 +126,7 @@ upgradetest sdefconf 198
 ```
 
 **Also check:** that you are actually in the telnet shell and not sitting at a busybox
-prompt that swallowed the command. And confirm the ONT did not reboot mid-command —
+prompt that swallowed the command. And confirm the ONT did not reboot mid-command:
 reconnect and re-run.
 
 **To confirm you are unlocked:** the web UI at `192.168.1.1` should now let you edit
@@ -138,13 +138,13 @@ WAN settings freely.
 
 Check in this order:
 
-1. **VLAN ID** — must match your pre-unlock screenshot exactly. This is the usual
+1. **VLAN ID**: must match your pre-unlock screenshot exactly. This is the usual
    cause and it presents identically to a wrong password.
-2. **Password** — the Airtel account number from the Thanks app. If your line was
+2. **Password**: the Airtel account number from the Thanks app. If your line was
    converted from DSL to fiber, it is instead the **Relationship ID** from an old
    Xstream eBill.
-3. **Username** — `0XXXXXXXXXXX_dsl@airtelbroadband.in`, copy it rather than retyping.
-4. **Default gateway checkbox** — if your downstream router is meant to own the
+3. **Username**: `0XXXXXXXXXXX_dsl@airtelbroadband.in`, copy it rather than retyping.
+4. **Default gateway checkbox**: if your downstream router is meant to own the
    gateway, uncheck it. Leaving it checked can cause a routing loop.
 
 ---
@@ -170,11 +170,11 @@ need an ONT with native bridge-mode support, or another route entirely.
 
 ## Bridge mode is on but there is still no internet
 
-Bridge mode alone is not enough — nothing is bound to a port.
+Bridge mode alone is not enough: nothing is bound to a port.
 
-1. **Network → Port Binding** — select your bridge connection, bind it to a LAN port
+1. **Network -> Port Binding**: select your bridge connection, bind it to a LAN port
 2. Set **DHCP Port Control** for that port to **Internet**
-3. Run Ethernet: ONT's bound LAN port → your router's **WAN** port
+3. Run Ethernet: ONT's bound LAN port -> your router's **WAN** port
 4. Configure PPPoE on your own router
 5. Turn off the ONT's WiFi, or you have two DHCP servers on one segment
 
@@ -182,7 +182,7 @@ Bridge mode alone is not enough — nothing is bound to a port.
 
 ## `sendcmd 1 DB decry ...` just prints the command list
 
-**Cause:** `decry` does not exist in your firmware. It was removed in later builds —
+**Cause:** `decry` does not exist in your firmware. It was removed in later builds:
 the command silently degrades into a help listing.
 
 **Not a syntax error, and not fixable.** This step only works on older firmware. If you
@@ -204,7 +204,7 @@ the PPPoE and SIP profiles if you lost them. Nothing in this guide is irreversib
 
 ## Related, not ZTE
 
-If you have a **Nokia G-2425G-A** instead, the procedure is entirely different —
+If you have a **Nokia G-2425G-A** instead, the procedure is entirely different:
 config decrypt/re-encrypt plus `ritool set OperatorID ALCL`, and a different reset
 procedure. Do not follow this guide for it.
 

@@ -10,11 +10,11 @@
 > If you brick it, that is between you and the ONT. If you point the finger at
 > me, I will laugh at you. Nothing here comes with a warranty, and the forum
 > threads this came from are full of people who skipped a step and regretted
-> it — read them and you will see the pattern.
+> it. Read them and you will see the pattern.
 >
 > So please:
 >
-> - Back up your config before you touch anything. [GUIDE.md](GUIDE.md) §1 says
+> - Back up your config before you touch anything. [GUIDE.md](GUIDE.md) section 1 says
 >   how, and it is the step people skip and regret.
 > - Do not flash firmware you have not verified. `firmware/` in this repo ships
 >   with a sha256 for exactly this reason.
@@ -22,8 +22,8 @@
 >   lose a working unlock permanently.
 > - Do not do any of this on hardware you do not own. See the note below.
 >
-> The people this is actually built on — `@BornArcher8` and the rest of the
-> forum — had the same exposure and took the same care. The forum posts are
+> The people this is actually built on (`@BornArcher8` and the rest of the
+> forum) had the same exposure and took the same care. The forum posts are
 > still up, and they are the primary source. If something here contradicts
 > them, believe them.
 
@@ -39,7 +39,7 @@ hardware is at fault.
 
 This was not a solo job. The unlock command, the PPPoE credentials, and most of
 the reasoning came from other people on
-[india broadband forum](https://broadband.forum/) — `@BornArcher8` in particular,
+[india broadband forum](https://broadband.forum/), `@BornArcher8` in particular,
 whose posts answered most of what I asked. I worked out the SIP credentials and
 the bridge-mode firmware downgrade myself. Those threads are cited throughout;
 see [reference/forum_posts.md](reference/forum_posts.md).
@@ -53,14 +53,14 @@ see [reference/forum_posts.md](reference/forum_posts.md).
 
 An ONT is provisioned by the ISP with a *region code* baked into its config. Airtel
 India uses code **35**. The stock/unlocked state is code **198**. Every locked
-behaviour — editable WAN, bridge mode, the ability to keep your own settings — comes
+behaviour (editable WAN, bridge mode, the ability to keep your own settings) comes
 back when you switch the code back to 198. That is the entire trick; everything else
 is just getting a shell to type it into.
 
 ## The procedure in one line
 
-Open telnet (`python3 -m zte_unlock`) → `upgradetest sdefconf 198`
-→ re-enter PPPoE and SIP credentials → (optional) downgrade firmware and use the
+Open telnet (`python3 -m zte_unlock`) -> `upgradetest sdefconf 198`
+-> re-enter PPPoE and SIP credentials -> (optional) downgrade firmware and use the
 inspect-element trick for bridge mode.
 
 ## Firmware compatibility
@@ -71,13 +71,13 @@ What the method was last confirmed against, and where it breaks:
 | --- | --- | --- | --- | --- |
 | `V9.0.10P18N2B` | works | works | no | The unlock itself is fine here; bridge mode needs the downgrade below |
 | `V9.0.11P1N40` | n/a | n/a | **works** | Downgrade target, vendored in `firmware/` |
-| `V9.0.10P18N3D` | **broken** | — | **broken** | Airtel patched both. `step [2] send sq: unknown error` |
+| `V9.0.10P18N3D` | **broken** | - | **broken** | Airtel patched both. `step [2] send sq: unknown error` |
 
 If your ONT reports `18N3D` or later, both the telnet tool and the bridge-mode trick
 are patched out. Get a firmware downgrade path, or use an ONT that natively supports
 bridge mode.
 
-The single fastest check: look for **System Management → Software Upgrade** in the
+The single fastest check: look for **System Management -> Software Upgrade** in the
 web UI. No such page means Airtel has removed the ability to change firmware, which
 means the bridge-mode section of [GUIDE.md](GUIDE.md) will not work for you.
 
@@ -98,14 +98,14 @@ tests/                    padding, handshake and status-page parsing tests
 I did not work this out alone. Nearly everything here came out of public
 discussion on [india broadband forum](https://broadband.forum/), mainly:
 
-- [F670Lv9.0 Telnet Access](https://broadband.forum/threads/220550/) — the main thread
+- [F670Lv9.0 Telnet Access](https://broadband.forum/threads/220550/): the main thread
 - [Successful Telnet access on ZTE F670L router and unlock](https://broadband.forum/threads/233670/)
 - [Bridge mode on unlocked ZTE F670L](https://broadband.forum/threads/233689/)
 - [SIP setup on Airtel ZTE F670LV9](https://broadband.forum/threads/217511/)
 
 **`@BornArcher8`** did most of the actual research. The unlock command
 (`upgradetest sdefconf 198`), the re-lock counterpart, the explanation of what the
-region code actually does, and the PPPoE password all came from them — I mostly
+region code actually does, and the PPPoE password all came from them. I mostly
 asked questions and they answered them. If this repo is useful to you, that is
 who to thank.
 
@@ -135,9 +135,9 @@ Two dependencies, both installed by the above: `cryptography` for AES and
 Upstream tools it is compatible with:
 
 - [stich86/zteOnu](https://github.com/stich86/zteOnu) (fork of
-  [Septrum101/zteOnu](https://github.com/Septrum101/zteOnu)) — opens telnet
-- [douniwan5788/zte_modem_tools](https://github.com/douniwan5788/zte_modem_tools) — alternative Python implementation
-- [zainarbani/ztelnet](https://github.com/zainarbani/ztelnet) — Windows `.exe` alternative
+  [Septrum101/zteOnu](https://github.com/Septrum101/zteOnu)): opens telnet
+- [douniwan5788/zte_modem_tools](https://github.com/douniwan5788/zte_modem_tools): alternative Python implementation
+- [zainarbani/ztelnet](https://github.com/zainarbani/ztelnet): Windows `.exe` alternative
 
 Both zteOnu projects are **AGPL-3.0**, which is why none of their source appears
 here: copying it would make this repository's documentation AGPL too. The
@@ -150,8 +150,8 @@ implementation is original. See [NOTICE.md](NOTICE.md).
 redistributed **unmodified**.
 
 **It is not covered by this repo's WTFPL license and remains the property of ZTE.**
-Everything else in this repository — the guide, the troubleshooting notes, the
-scripts — is WTFPL.
+Everything else in this repository (the guide, the troubleshooting notes, the
+scripts) is WTFPL.
 
 - **Version:** `V9.0.11P1N40` (`ZXHN F670L UNI V9.0.11P1N40`, built 2022-05-25)
 - **Size:** 24,070,224 bytes
@@ -169,5 +169,5 @@ shasum -a 256 -c reference/firmware/ZXHN_F670L_V9.0.11P1N40.bin.sha256
 
 It is vendored here because the original link was a personal Google Drive file that
 can disappear at any time, and this is the only thing standing between you and the
-bridge-mode section. It is a **downgrade**, not an upgrade — flashing current
+bridge-mode section. It is a **downgrade**, not an upgrade: flashing current
 firmware through this path would be a no-op at best.
