@@ -1,14 +1,20 @@
 # Source material
 
-Every factual claim in this repo traces back to one of these. Post IDs are XenForo's
-and are permanent; the temp-user account behind them is gone, but the posts are not.
+Every factual claim in this repo traces back to one of these. Post IDs are
+XenForo's and are permanent.
+
+A note on the account: I posted all of this on the forum under the name
+**ghostrox69**, which was a throwaway I made because I did not want my real
+account associated with router-modifying advice. I have since lost access to it.
+The posts are still up, so the trail back to the original discussion survives even
+though the account does not — which is the main reason this repo exists.
 
 ## Where it came from
 
 Five threads on [broadband.forum](https://broadband.forum/), forum: Airtel Xstream
 Broadband.
 
-| Thread | Posts | What it provided |
+| Thread | Posts | What it gave me |
 | --- | --- | --- |
 | [F670Lv9.0 Telnet Access](https://broadband.forum/threads/220550/) | 178 | The bulk of it. `upgradetest sdefconf 198`, PPPoE credentials, the `decry` config-dump commands |
 | [Successful Telnet access on ZTE F670L router and unlock](https://broadband.forum/threads/233670/) | 3 | The summary post naming zteOnu and the unlock command |
@@ -16,11 +22,11 @@ Broadband.
 | [SIP setup on Airtel ZTE F670LV9](https://broadband.forum/threads/217511/) | 8 | The unanswered SIP question, answered later |
 | [How to Retrieve My Airtel Account Password](https://broadband.forum/threads/232038/) | 24 | PPPoE password = account number, and the Relationship ID exception |
 
-## Original author's posts
+## My posts
 
-The walkthrough in [GUIDE.md](../GUIDE.md) was performed by `ghostrox69` between
-16–18 April 2025. These are their twelve posts, in order. Quoted as written,
-typos included, since they are the primary record.
+I did the walkthrough in [GUIDE.md](../GUIDE.md) between 16–18 April 2025. These
+are my twelve posts, in order. Quoted as written, typos included, since they are
+the primary record.
 
 ### The unlock itself
 
@@ -115,10 +121,13 @@ thread. Note the intended end state — OPNsense, not a consumer router:
 
 ---
 
-## Key contributions from others
+## What I owe to other people
 
-`@BornArcher8` (`tr1k0N4`) did most of the actual research and is the source of the
-core procedure. Their posts are what make this guide possible.
+`@BornArcher8` (`tr1k0N4`) did most of the actual research. I came in with a
+locked router and a vague idea; the unlock command, the re-lock counterpart, the
+explanation of what the region code actually does, the PPPoE password, and the
+port-binding steps are all theirs. Without those answers I would have given up
+somewhere around the credential-parsing step.
 
 **The unlock and re-lock commands** — [post 1687154](https://broadband.forum/threads/220550/post-1687154):
 
@@ -190,7 +199,7 @@ Recorded so nobody re-derives it.
 
 ## Caveats on this writeup
 
-- Written in October 2026 from a run performed in April 2025. **Nothing here was
+- Written in October 2026 from a run I did in April 2025. **Nothing here was
   re-tested against hardware.** Firmware state has moved on since.
 - The `18N3D` breakage is reported by users in late 2025 and April 2026, not observed
   directly.

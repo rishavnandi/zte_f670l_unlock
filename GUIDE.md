@@ -1,7 +1,12 @@
 # Unlocking the ZTE F670L — full walkthrough
 
-Target: ZTE F670L GPON ONT on Airtel Xstream, firmware `V9.0.10P18N2B`, web UI at
-`192.168.1.1`.
+This is the exact path I took on my own ZTE F670L GPON ONT on Airtel Xstream,
+firmware `V9.0.10P18N2B`, web UI at `192.168.1.1`.
+
+It was not all my own work — the unlock command, the PPPoE credentials and the
+port-binding steps came from other people on
+[india broadband forum](https://broadband.forum/), chiefly `@BornArcher8`. See
+the [Credits](README.md#credits) in the README.
 
 Steps 1–5 get you an unlocked ONT you control. Step 6 is optional and is the part
 Airtel has since patched on newer firmware. Read the compatibility table in

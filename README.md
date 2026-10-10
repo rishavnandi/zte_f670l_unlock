@@ -1,13 +1,21 @@
 # Unlock an Airtel Xstream ZTE F670L ONT
 
-Notes from unlocking an ISP-locked ZTE F670L GPON ONT (Airtel Xstream, India) in April 2025:
-opening telnet, clearing the ISP region lock, restoring PPPoE and SIP, and
-reaching bridge mode.
+These are my notes from unlocking my own ZTE F670L GPON ONT (Airtel Xstream, India)
+in April 2025: opening telnet, clearing the ISP region lock, restoring PPPoE and
+SIP, and reaching bridge mode.
 
-Written up because the existing forum threads scatter the working procedure across
-178 posts and contradict each other in places. The full walkthrough is in
-[GUIDE.md](GUIDE.md); if something here is wrong, check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-before assuming the hardware is at fault.
+I wrote this up because the working procedure is scattered across 178 forum posts
+that contradict each other in places, and because I lost access to the account I
+had posted under. The full walkthrough is in [GUIDE.md](GUIDE.md); if something
+here is wrong, check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) before assuming the
+hardware is at fault.
+
+This was not a solo job. The unlock command, the PPPoE credentials, and most of
+the reasoning came from other people on
+[india broadband forum](https://broadband.forum/) — `@BornArcher8` in particular,
+whose posts answered most of what I asked. I worked out the SIP credentials and
+the bridge-mode firmware downgrade myself. Those threads are cited throughout;
+see [reference/forum_posts.md](reference/forum_posts.md).
 
 > **This is ISP equipment you do not own.** Unlocking defeats the operator's
 > provisioning lock and voids any warranty or support you have with them. It may
@@ -60,16 +68,28 @@ tests/                    AES conformance + protocol tests
 
 ## Credits
 
-Everything here was assembled from public discussion on
-[india broadband forum](https://broadband.forum/), principally:
+I did not work this out alone. Nearly everything here came out of public
+discussion on [india broadband forum](https://broadband.forum/), mainly:
 
 - [F670Lv9.0 Telnet Access](https://broadband.forum/threads/220550/) — the main thread
 - [Successful Telnet access on ZTE F670L router and unlock](https://broadband.forum/threads/233670/)
 - [Bridge mode on unlocked ZTE F670L](https://broadband.forum/threads/233689/)
 - [SIP setup on Airtel ZTE F670LV9](https://broadband.forum/threads/217511/)
 
-The unlock and PPPoE procedure came from `@BornArcher8`. The SIP credentials and the
-bridge-mode firmware downgrade were worked out independently.
+**`@BornArcher8`** did most of the actual research. The unlock command
+(`upgradetest sdefconf 198`), the re-lock counterpart, the explanation of what the
+region code actually does, and the PPPoE password all came from them — I mostly
+asked questions and they answered them. If this repo is useful to you, that is
+who to thank.
+
+The SIP credentials and the bridge-mode firmware downgrade I worked out myself,
+by reading what others had already tried and following the dead ends.
+
+A note on attribution: I posted about this on the forum in April 2025 under the
+name **ghostrox69**, which was a temporary account. I no longer have access to
+it, which is part of why I wrote all this down here. The posts are still up and
+are quoted in [reference/forum_posts.md](reference/forum_posts.md), so the trail
+back to the original discussion is intact even though the account is not.
 
 ### The tool in `zte_unlock/`
 
@@ -107,8 +127,8 @@ scripts — is WTFPL.
 - **sha256:** `57c0728a446b20f48c1c9da37e37e379fd4c7b1bc0a96cd5ce952ee1fbc0701e`
 - **md5:** `bd178fc2d1469bf354d743c01e3dc9ec`
 - **Original source:** linked from
-  [this forum post](https://broadband.forum/threads/233689/post-1687611) by the
-  original author of this writeup
+  [this forum post](https://broadband.forum/threads/233689/post-1687611) that I
+  made while working this out
 
 Verify before flashing:
 
