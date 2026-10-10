@@ -16,11 +16,11 @@ from __future__ import annotations
 
 import argparse
 import base64
-import os
+import http.client
+import socket
 import sys
 import time
-from urllib import error as urlerror
-from urllib import parse, request
+from urllib import parse
 
 from . import aes
 
@@ -31,8 +31,17 @@ class FactoryError(RuntimeError):
     """Any failure talking to the ONT's factory-mode interface."""
 
 
-# The ONT expects a specific client string and rejects unknown agents.
+# The ONT expects a specific client string and rejects unknown agents. These
+# headers mirror what the reference client sends, so the ONT sees the same
+# request on every call.
 _USER_AGENT = "curl/8.8.0-DEV"
+
+_HEADERS = {
+    "User-Agent": _USER_AGENT,
+    "Accept": "*/*",
+    "Accept-Encoding": "identity",
+    "Content-Type": "application/octet-stream",
+}
 
 # Protocol key material. These are fixed values the ONT firmware expects.
 _KEY_POOL_V1 = bytes((
@@ -101,6 +110,51 @@ def derive_key(rand: int, new_rand: int, version: int) -> bytes:
     return bytes(b ^ _KEY_XOR for b in window)
 
 
+class _KeepAlive:
+    """A single HTTP connection reused for the whole handshake.
+
+    The reference client keeps one TCP connection open across the handshake.
+    Reusing it matters: the ONT tracks factory-mode state per connection, so
+    opening a fresh socket per request loses that state.
+    """
+
+    def __init__(self, host: str, port: int, timeout: float):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self._conn: http.client.HTTPConnection | None = None
+
+    def request(self, method: str, path: str, body: bytes | None) -> tuple[int, bytes]:
+        for attempt in (1, 2):
+            if self._conn is None:
+                self._conn = http.client.HTTPConnection(
+                    self.host, self.port, timeout=self.timeout
+                )
+            try:
+                self._conn.request(method, path, body=body, headers=_HEADERS)
+                resp = self._conn.getresponse()
+                return resp.status, resp.read()
+            except (http.client.RemoteDisconnected, http.client.BadStatusLine):
+                # The ONT hung up. That is a valid outcome for one specific
+                # request; the caller decides. Reconnect once so the session
+                # stays usable, then let it propagate.
+                self.close()
+                raise
+            except (OSError, http.client.HTTPException):
+                self.close()
+                if attempt == 2:
+                    raise
+        raise FactoryError("unreachable")
+
+    def close(self) -> None:
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except OSError:
+                pass
+            self._conn = None
+
+
 class FactoryMode:
     """Drives the ONT factory-mode handshake and returns telnet credentials."""
 
@@ -108,45 +162,59 @@ class FactoryMode:
         self.base_url = f"http://{ip}:{port}"
         self.timeout = timeout
         self._key: bytes | None = None
+        self._http = _KeepAlive(ip, port, timeout)
+
+    def _get(self) -> None:
+        """Wake the ONT's web service with a bare GET /.
+
+        The ONT answers 400 here; only the fact that it answered matters.
+        """
+        try:
+            self._http.request("GET", "/", None)
+        except (http.client.RemoteDisconnected, http.client.BadStatusLine):
+            return
+        except OSError as exc:
+            raise FactoryError(f"cannot reach {self.base_url}: {exc}") from exc
 
     def _post(self, path: str, body: bytes, *, allow_eof: bool = False) -> tuple[int, bytes]:
-        req = request.Request(
-            self.base_url + path,
-            data=body,
-            headers={"User-Agent": _USER_AGENT},
-            method="POST",
-        )
         try:
-            with request.urlopen(req, timeout=self.timeout) as resp:
-                return resp.status, resp.read()
-        except urlerror.HTTPError as exc:
-            return exc.code, exc.read()
-        except urlerror.URLError as exc:
-            # RequestFactoryMode closes the connection deliberately; the ONT
-            # signals success by hanging up rather than replying.
-            if allow_eof and isinstance(exc.reason, (OSError, EOFError)):
+            return self._http.request("POST", path, body)
+        except (http.client.RemoteDisconnected, http.client.BadStatusLine):
+            # RequestFactoryMode makes the ONT hang up without replying, which
+            # is its success signal.
+            if allow_eof:
                 return 0, b""
-            raise FactoryError(f"cannot reach {self.base_url}: {exc.reason}") from exc
+            raise FactoryError(f"{self.base_url}{path}: connection closed")
+        except OSError as exc:
+            raise FactoryError(f"cannot reach {self.base_url}: {exc}") from exc
+        except http.client.HTTPException as exc:
+            raise FactoryError(f"{self.base_url}{path} failed: {exc}") from exc
 
     def _post_encrypted(self, command: bytes) -> tuple[int, bytes]:
         if self._key is None:
             raise FactoryError("session key not established")
         status, body = self._post("/webFacEntry", aes.encrypt(command, self._key))
-        if status == 200:
+        if not body:
+            return status, body
+        # The reference client decrypts whatever came back regardless of the
+        # status code, so a body arriving with an unexpected status is still
+        # readable. Only attempt decryption when the body is a whole number of
+        # blocks.
+        if len(body) % aes.BLOCK_SIZE:
+            return status, body
+        try:
             return status, aes.unpad(aes.decrypt(body, self._key))
-        return status, body
+        except ValueError:
+            return status, body
 
     def reset(self) -> None:
-        """Wake the ONT's web service and reset the factory-mode state."""
-        try:
-            with request.urlopen(self.base_url + "/", timeout=self.timeout) as resp:
-                resp.read()
-        except urlerror.URLError as exc:
-            raise FactoryError(f"cannot reach {self.base_url}: {exc.reason}") from exc
+        """Reset the factory-mode state on the ONT."""
+        self._get()  # raises FactoryError if the ONT is unreachable
 
         status, body = self._post("/webFac", b"SendSq.gch")
-        # A 400 here is the expected "already reset" response.
-        if status not in (200, 400):
+        # The ONT answers 400 once the factory-mode state is already reset,
+        # which is the expected case.
+        if status != 400:
             raise FactoryError(f"reset failed: {_describe(status, body)}")
 
     def request_factory_mode(self) -> None:
@@ -165,12 +233,21 @@ class FactoryMode:
                 "method will work."
             )
 
-        text = body.decode(errors="replace")
-        if "newrand=" in text:
-            new_rand = int(text.split("newrand=")[1].strip() or 0)
+        # Whitespace is trimmed before parsing, matching the reference client.
+        text = body.decode(errors="replace").strip()
+
+        if "newrand" in text:
             version = 2
-        elif not text.strip():
+            # A non-numeric value means the ONT did not give us a usable
+            # counter; fall back to 0 rather than dying on the ValueError.
+            raw = text.replace("newrand=", "", 1)
+            try:
+                new_rand = int(raw)
+            except ValueError:
+                new_rand = 0
+        elif not text:
             version = 1
+            new_rand = 0
         else:
             raise FactoryError(f"unexpected negotiation reply: {text!r}")
 
@@ -197,8 +274,11 @@ class FactoryMode:
 
     def enter(self) -> tuple[str, str]:
         """Enter factory mode and return the generated telnet credentials."""
+        # The status is not checked here: the reference client ignores it and
+        # decrypts whatever came back, so an unexpected code with a valid body
+        # still yields credentials.
         status, body = self._post_encrypted(b"FactoryMode.gch?mode=2&user=notused")
-        if status != 200:
+        if not body:
             raise FactoryError(f"factory mode refused: {_describe(status, body)}")
 
         # The ONT replies with a URL whose query carries the credentials, so the
@@ -227,13 +307,16 @@ def open_factory_mode(
     username: str | None = None,
     password: str | None = None,
     timeout: float = 10.0,
+    attempts: int = 5,
 ) -> tuple[str, str]:
     """Run the full handshake, trying each known credential pair.
 
+    Each pair gets a fresh client and a full handshake, retried up to
+    ``attempts`` times. The handshake state does not survive an attempt, so
+    reusing one session across pairs does not work.
+
     Returns the temporary telnet username and password.
     """
-    client = FactoryMode(ip=ip, port=port, timeout=timeout)
-
     if username and password:
         pairs = [(username, password)]
     elif username or password:
@@ -241,20 +324,37 @@ def open_factory_mode(
     else:
         pairs = list(zip(DEFAULT_USERS, DEFAULT_PASSWORDS))
 
-    client.reset()
-    client.request_factory_mode()
-    version = client.negotiate()
-
     last_error = None
     for user, pw in pairs:
-        try:
-            client.authenticate(user, pw, version)
-        except FactoryError as exc:
-            last_error = exc
-            continue
-        return client.enter()
+        client = None
+        for attempt in range(1, attempts + 1):
+            # A fresh client per attempt: the session key and factory-mode
+            # state are negotiated each time and do not survive a failure.
+            client = FactoryMode(ip=ip, port=port, timeout=timeout)
+            try:
+                client.reset()
+                client.request_factory_mode()
+                version = client.negotiate()
+                client.authenticate(user, pw, version)
+            except FactoryError as exc:
+                last_error = exc
+                # The ONT is not answering at all. Retrying every credential
+                # against a dead host only produces noise.
+                if "cannot reach" in str(exc):
+                    raise FactoryError(f"cannot reach {ip}:{port}: {exc}") from exc
+                print(
+                    f"  {user}: {exc} (attempt {attempt}/{attempts})",
+                    file=sys.stderr,
+                )
+                time.sleep(0.5)
+                continue
 
-    raise FactoryError(f"no credential pair worked ({len(pairs)} tried): {last_error}")
+            print(f"authenticated as {user}", file=sys.stderr)
+            return client.enter()
+
+    raise FactoryError(
+        f"no credential pair worked ({len(pairs)} tried): {last_error}"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -301,31 +401,90 @@ def main(argv: list[str] | None = None) -> int:
 
 def _check_mac() -> int:
     """Report whether any local interface carries the magic MAC."""
-    import socket
-    import struct
-
     try:
         raw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        raw.connect(("192.168.1.1", 1))
-        local_ip = raw.getsockname()[0]
-        raw.close()
+        try:
+            raw.connect(("192.168.1.1", 1))
+            local_ip = raw.getsockname()[0]
+        finally:
+            raw.close()
     except OSError as exc:
         print(f"error: cannot determine local interface: {exc}", file=sys.stderr)
         return 1
 
-    with open("/proc/net/arp", encoding="utf-8") as handle:  # pragma: no cover
-        for line in handle.readlines()[1:]:
-            parts = line.split()
-            if len(parts) > 3 and parts[0] == local_ip:
-                mac = parts[3]
-                if mac == _MAGIC_MAC.replace(":", "").lower():
-                    print(f"ok: {local_ip} uses {_MAGIC_MAC}")
-                    return 0
-                print(f"{local_ip} uses {mac}, expected {_MAGIC_MAC}")
-                return 1
+    # Look at the interface bound to the address that would reach the ONT,
+    # not the ARP table, which holds the ONT's own MAC rather than ours.
+    found = False
+    for interface in net_ifaces():
+        addresses = interface.get("addr", []) or []
+        for family, mac in addresses:
+            if family != socket.AF_INET or mac != local_ip:
+                continue
+            found = True
+            if mac_is_magic(interface.get("link", "")):
+                print(f"ok: {local_ip} uses {_MAGIC_MAC} on {interface['name']}")
+                return 0
+            print(
+                f"{local_ip} uses {interface.get('link', 'unknown')}, "
+                f"expected {_MAGIC_MAC} (interface {interface['name']})"
+            )
+            return 1
 
-    print(f"no ARP entry for {local_ip}; set the MAC manually")
+    if not found:
+        print(f"no interface found for {local_ip}")
+    else:  # pragma: no cover - defensive
+        print(f"no interface found for {local_ip}")
     return 1
+
+
+def mac_is_magic(link_address: str) -> bool:
+    """True when the interface address is the magic MAC."""
+    return link_address.replace("-", ":").lower() == _MAGIC_MAC.lower()
+
+
+def net_ifaces() -> list[dict]:
+    """Local interfaces as [{name, addr: [(family, ip)], link: mac}].
+
+    Uses psutil when present, otherwise the stdlib where possible. Kept
+    dependency-free, so the common macOS/Linux cases are handled directly and
+    anything else falls back to an empty list.
+    """
+    interfaces: list[dict] = []
+    try:
+        raw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            raw.connect(("192.168.1.1", 1))
+            interfaces.append({
+                "name": "default-route",
+                "addr": [(socket.AF_INET, raw.getsockname()[0])],
+                "link": "",
+            })
+        finally:
+            raw.close()
+    except OSError:
+        pass
+
+    try:
+        import psutil  # type: ignore
+    except ImportError:
+        return interfaces
+
+    for name, addrs in psutil.net_if_addrs().items():
+        entry = {
+            "name": name,
+            "addr": [
+                (a.family, a.address)
+                for a in addrs
+                if getattr(a, "family", None) in (socket.AF_INET,)
+            ],
+            "link": next(
+                (a.address for a in addrs
+                 if getattr(a, "family", None) == psutil.AF_LINK),
+                "",
+            ),
+        }
+        interfaces.append(entry)
+    return interfaces
 
 
 if __name__ == "__main__":

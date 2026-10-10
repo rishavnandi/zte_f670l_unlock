@@ -53,8 +53,23 @@ repository remaining reachable is fragile. This implementation means the guide i
 
 The AES-192-ECB cipher in `zte_unlock/aes.py` was written from FIPS-197 and
 cross-checked against OpenSSL, pycryptodome and `cryptography` across all three
-key sizes with randomised keys and lengths. It is **not** validated against real
-ONT hardware — see the caveats in [../GUIDE.md](../GUIDE.md).
+key sizes with randomised keys and lengths.
+
+Protocol compatibility was verified by **differential testing against the
+compiled upstream Go binary**: both clients were pointed at the same mock ONT and
+their request sequences compared step for step, including decrypted payload
+contents. Four scenarios are covered — v2 negotiation, v1 negotiation,
+FactoryMode returning a non-200 with a valid body, and authentication rejection
+— and all produce identical request sequences and outcomes.
+
+That process found real defects that unit tests alone had missed, most
+importantly that the handshake must ride a **single persistent connection**: the
+ONT tracks factory-mode state per connection, and urllib's default
+`Connection: close` silently broke it. `tests/test_handshake.py` and
+`tests/test_compat.py` cover each of these.
+
+**This is not validated against real ONT hardware.** Everything above is against
+a mock and a reference binary. See the caveats in [../GUIDE.md](../GUIDE.md).
 
 ## Trademarks
 
