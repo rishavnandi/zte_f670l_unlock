@@ -288,12 +288,29 @@ you bind.
 2. Select the bridge connection you just created
 3. Choose a LAN port, e.g. LAN 4. That port becomes your bridge port.
 4. Set **DHCP Port Control** for that same port to **Internet**
+5. Go back to **Network -> WAN**, open the bridge profile, and set **VLAN** and
+   **802.1p** to match the Internet WAN profile from step 1
+6. Untick the same LAN port under the routed **Internet** WAN profile. A port
+   bound to both profiles is undefined behaviour
 
 Then run Ethernet from that LAN port on the ONT to the **WAN** port of your own router,
 and configure PPPoE there with the same credentials from step 4.
 
-Leave the ONT's own WiFi off if it is bridging, or you will have two DHCP servers on
-one segment.
+Leave VLAN tagging off on the downstream router unless PPPoE fails to
+authenticate. The ONT's VLAN is the upstream GEM VLAN and comes out of the
+bridge port untagged, so tagging it on both sides is double tagging. Tagging on
+the downstream router alone only works if the ONT passes the tag through, which
+the F670L does not.
+
+Do not delete the routed Internet WAN profile. Leave it enabled while you get
+the downstream router working so you keep management access and a way back, and
+disable it only if PPPoE will not authenticate and Airtel is refusing the second
+session.
+
+Leave the ONT's own WiFi off while it is bridging, or you will have two DHCP
+servers on one segment. Reusing its old SSID on the downstream router is fine
+then, but if you turn the ONT WiFi back on with the same name, clients flip
+between the two.
 
 ---
 
